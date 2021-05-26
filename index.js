@@ -11,7 +11,7 @@ const session = require("express-session");
 const bcrypt = require("bcrypt");
 const saltRounds = 10;
 
-
+const hashing = require('random-hash')
 
 const app = express()
 
@@ -77,11 +77,6 @@ app.post("/register", (req, res) => {
     });
 });
 
-const generateSessionId = () => {
-    var current_date = (new Date()).valueOf().toString();
-    var random = Math.random().toString();
-    return crypto.createHash('sha1').update(current_date + random).digest('hex');
-}
 
 app.get("/login", (req, res) => {
     if (req.session.user) {
@@ -109,36 +104,39 @@ app.post("/login", (req, res) => {
                         req.session.user = result;
                         console.log(req.session.user);
 
-                        var session_id = generateSessionId()
+                        var session_id = hashing.generateHash()
                         result[0].session_id = session_id;
 
 
                         db.query(
-                            "UPDATE users SET session_id = ? where username = ?;",
-                            session_id, username,
-                            (err, result) => {
+                            "UPDATE users SET session_id = ? where username ='"+`${username}`+"'",
+                            session_id,
+                            (err, res1) => {
                                 if (err) {
                                     res.send({ err: err });
                                 }
                                 else {
                                     console.log("Session Id created for user :", session_id)
-                                    res.send(result[0])
+                                    console.log(result[0])
+                                    res.status(200).send(result[0])
                                 }
                             }
                         )
 
                     } else {
+                        console.log("Wrong user credentials")
                         res.send({ message: "Wrong credentials entered !!" });
                     }
                 });
             } else {
+                console.log("No such user exists")
                 res.send({ message: "User doesn't exist" });
             }
-        }
+        }   
     );
 });
 
-app.get("/users", (req, res) => {
+app.get("/verify", (req, res) => {
     const username = req.body.username;
     db.query(
         "SELECT session_id FROM users WHERE username = ?;",
