@@ -48,61 +48,118 @@ const db = mysql.createConnection({
 })
 
 app.post("/register", (req, res) => {
-    const username = req.body.username;
-    const password = req.body.password;
-  
+    const username = req.body.username
+    const password = req.body.password
+    const first_name = req.body.first_name
+    const last_name = req.body.last_name
+    const age = req.body.age
+    const gender = req.body.gender
+    const email = req.body.email
+
     bcrypt.hash(password, saltRounds, (err, hash) => {
-      if (err) {
-        console.log(err);
-      }
-  
-      db.query(
-        "INSERT INTO users (username, password) VALUES (?,?)",
-        [username, hash],
-        (err, result) => {
-          console.log(err);
+        if (err) {
+            console.log(err);
         }
-      );
+
+        db.query(
+            "INSERT INTO users (first_name, last_name, username, password, age, gender, email) VALUES (?,?,?,?,?,?,?)",
+            [first_name, last_name, username, hash, age, gender, email],
+            (err, result) => {
+                if (err) {
+                    console.log("Credentials already in use")
+                    res.status(406).send({ message: "Error in user registration, change username and email", problem: "Some problem occurred" })
+                }
+                else {
+                    res.status(202).send({ message: "User registerd successfully" })
+                }
+            }
+        );
     });
-  });
-  
-  app.get("/login", (req, res) => {
+});
+
+const generateSessionId = () => {
+    var current_date = (new Date()).valueOf().toString();
+    var random = Math.random().toString();
+    return crypto.createHash('sha1').update(current_date + random).digest('hex');
+}
+
+app.get("/login", (req, res) => {
     if (req.session.user) {
-      res.send({ loggedIn: true, user: req.session.user });
+        res.send({ loggedIn: true, user: req.session.user });
     } else {
-      res.send({ loggedIn: false });
+        res.send({ loggedIn: false });
     }
-  });
-  
-  app.post("/login", (req, res) => {
+});
+
+app.post("/login", (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
-  
+
     db.query(
-      "SELECT * FROM users WHERE username = ?;",
-      username,
-      (err, result) => {
-        if (err) {
-          res.send({ err: err });
-        }
-  
-        if (result.length > 0) {
-          bcrypt.compare(password, result[0].password, (error, response) => {
-            if (response) {
-              req.session.user = result;
-              console.log(req.session.user);
-              res.send(result);
-            } else {
-              res.send({ message: "Wrong credentials entered !!" });
+        "SELECT * FROM users WHERE username = ?;",
+        username,
+        (err, result) => {
+            if (err) {
+                res.send({ err: err });
             }
-          });
-        } else {
-          res.send({ message: "User doesn't exist" });
+
+            if (result.length > 0) {
+                bcrypt.compare(password, result[0].password, (error, response) => {
+                    if (response) {
+                        req.session.user = result;
+                        console.log(req.session.user);
+
+                        var session_id = generateSessionId()
+                        result[0].session_id = session_id;
+
+
+                        db.query(
+                            "UPDATE users SET session_id = ? where username = ?;",
+                            session_id, username,
+                            (err, result) => {
+                                if (err) {
+                                    res.send({ err: err });
+                                }
+                                else {
+                                    console.log("Session Id created for user :", session_id)
+                                    res.send(result[0])
+                                }
+                            }
+                        )
+
+                    } else {
+                        res.send({ message: "Wrong credentials entered !!" });
+                    }
+                });
+            } else {
+                res.send({ message: "User doesn't exist" });
+            }
         }
-      }
     );
-  });
-  
-  app.listen(process.env.PORT, () => {
+});
+
+app.get("/users", (req, res) => {
+    const username = req.body.username;
+    db.query(
+        "SELECT session_id FROM users WHERE username = ?;",
+        username,
+        (err, result) => {
+            if(err) {
+                console.log("User not logged in")
+                res.status(404).send({message: "User not logged in"})
+            }
+            else {
+                console.log(result)
+                if(result[0].session_id == session_id)
+                    res.status(200).send({message: "User logged in !"})
+                else 
+                    res.status(403).send({message: "Session id's didn't match"})
+            }
+        }
+    )
+});
+
+
+app.listen(process.env.PORT, () => {
     console.log("Server up and running at port ", process.env.PORT);
-  });
+});
