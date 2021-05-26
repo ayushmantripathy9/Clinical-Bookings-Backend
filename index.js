@@ -95,7 +95,9 @@ app.post("/login", (req, res) => {
         username,
         (err, result) => {
             if (err) {
+                console.log("xyzzzz" + err)
                 res.send({ err: err });
+
             }
 
             if (result.length > 0) {
@@ -109,7 +111,7 @@ app.post("/login", (req, res) => {
 
 
                         db.query(
-                            "UPDATE users SET session_id = ? where username ='"+`${username}`+"'",
+                            "UPDATE users SET session_id = ? where username ='" + `${username}` + "'",
                             session_id,
                             (err, res1) => {
                                 if (err) {
@@ -132,30 +134,56 @@ app.post("/login", (req, res) => {
                 console.log("No such user exists")
                 res.send({ message: "User doesn't exist" });
             }
-        }   
+        }
     );
 });
 
-app.get("/verify", (req, res) => {
-    const username = req.body.username;
+app.post("/verify", (req, res) => {
+    //console.log("params : "+req.body.session_id)
+    var session_id = ""
+    if(session_id = undefined)
+        session_id = "ican'tbe" 
+    else
+        session_id = req.body.session_id;
+    //console.log("hiiiaz"+session_id)
     db.query(
-        "SELECT session_id FROM users WHERE username = ?;",
-        username,
+        
+        "SELECT * FROM users WHERE session_id = ?;",
+        session_id,
         (err, result) => {
-            if(err) {
-                console.log("User not logged in")
-                res.status(404).send({message: "User not logged in"})
+            if (err) {
+                console.log("User not logged in:::" + err)
+                res.status(404).send({ message: "User not logged in" })
             }
-            else {
-                console.log(result)
-                if(result[0].session_id == session_id)
-                    res.status(200).send({message: "User logged in !"})
-                else 
-                    res.status(403).send({message: "Session id's didn't match"})
+            else if(result.length > 0) {
+                console.log("resruu" + JSON.stringify(result[0]))
+                //const ans = JSON.stringify(result[0])
+                if (result[0].session_id == session_id) {
+                    res.status(200).send({ message: "User logged in !", "user_details": result[0] })
+                    //console.log(result[0])
+                }
+                else
+                    res.status(403).send({ message: "Session id's didn't match" })
             }
         }
     )
 });
+
+app.post("/logout", (req, res) => {
+    db.query(
+        "UPDATE users SET session_id = \"\" WHERE session_id = ?;",
+        req.body.session_id,
+        (err, res1) => {
+            if(err) {
+                res.status(400).send({message: "Error Logging Out"})
+            }
+            else{
+                console.log("User logged out successfully")
+                res.status(200).send({message: "User logged out successfully!"})
+            }
+        }
+    )
+})
 
 
 app.listen(process.env.PORT, () => {
