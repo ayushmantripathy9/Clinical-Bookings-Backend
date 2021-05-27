@@ -95,7 +95,7 @@ app.post("/login", (req, res) => {
         username,
         (err, result) => {
             if (err) {
-                console.log("xyzzzz" + err)
+                console.log("error : " + err)
                 res.send({ err: err });
 
             }
@@ -119,7 +119,7 @@ app.post("/login", (req, res) => {
                                 }
                                 else {
                                     console.log("Session Id created for user :", session_id)
-                                    console.log(result[0])
+                                    // console.log(result[0])
                                     res.status(200).send(result[0])
                                 }
                             }
@@ -141,13 +141,13 @@ app.post("/login", (req, res) => {
 app.post("/verify", (req, res) => {
     //console.log("params : "+req.body.session_id)
     var session_id = ""
-    if(session_id = undefined)
-        session_id = "ican'tbe" 
+    if (session_id = undefined)
+        session_id = "ican'tbe"
     else
         session_id = req.body.session_id;
     //console.log("hiiiaz"+session_id)
     db.query(
-        
+
         "SELECT * FROM users WHERE session_id = ?;",
         session_id,
         (err, result) => {
@@ -155,8 +155,8 @@ app.post("/verify", (req, res) => {
                 console.log("User not logged in:::" + err)
                 res.status(404).send({ message: "User not logged in" })
             }
-            else if(result.length > 0) {
-                console.log("resruu" + JSON.stringify(result[0]))
+            else if (result.length > 0) {
+                console.log("result : " + JSON.stringify(result[0]))
                 //const ans = JSON.stringify(result[0])
                 if (result[0].session_id == session_id) {
                     res.status(200).send({ message: "User logged in !", "user_details": result[0] })
@@ -174,16 +174,41 @@ app.post("/logout", (req, res) => {
         "UPDATE users SET session_id = \"\" WHERE session_id = ?;",
         req.body.session_id,
         (err, res1) => {
-            if(err) {
-                res.status(400).send({message: "Error Logging Out"})
+            if (err) {
+                res.status(400).send({ message: "Error Logging Out" })
             }
-            else{
+            else {
                 console.log("User logged out successfully")
-                res.status(200).send({message: "User logged out successfully!"})
+                res.status(200).send({ message: "User logged out successfully!" })
             }
         }
     )
 })
+
+app.post("/book", (req, res) => {
+    const username = req.body.username
+    const ailment = req.body.ailment
+    const hospital = req.body.hospital
+    const date = req.body.date
+    const time = req.body.time
+
+
+    db.query(
+        "INSERT INTO appointments (username, hospital, ailment, date, time) VALUES (?,?,?,?,?)",
+        [username, hospital, ailment, date, time],
+        (err, result) => {
+            if (err) {
+                console.log("Missing Details")
+                res.status(406).send({ message: "Error in booking appointment. Fill all fields", problem: "Some problem occurred" })
+            }
+            else {
+                console.log("Booking Successful")
+                res.status(202).send({ message: "Appointment booked successfully" })
+            }
+        }
+    );
+
+});
 
 
 app.listen(process.env.PORT, () => {
